@@ -5,12 +5,12 @@ using Xunit;
 
 namespace httpclientestdouble.example
 {
-    public class TestDoubleFeedGeneratorTests
+    public class InMemoryFeedGeneratorTests
     {
         private readonly FeedGenerator generator;
         private readonly InMemoryHttpClient testDouble;
 
-        public TestDoubleFeedGeneratorTests()
+        public InMemoryFeedGeneratorTests()
         {
             generator = new FeedGenerator();
             testDouble = new InMemoryHttpClient(new ObjectDeserializer());
