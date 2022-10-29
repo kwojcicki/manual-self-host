@@ -17,6 +17,58 @@ namespace httpclientestdouble.example
         }
 
         [Fact]
+        public async Task GetFeed_MultipleFollowers_Manual()
+        {
+            var followers = new List<Follower>() { new Follower(Guid.NewGuid()), new Follower(Guid.NewGuid()), new Follower(Guid.NewGuid()) };
+            var now = DateTimeOffset.UtcNow;
+            var posts = new List<List<Post>>() {
+                new List<Post>(){ new Post("I love AWS!", now.AddHours(1)) },
+                new List<Post>(){ new Post("GCP Rocks!", now) },
+                new List<Post>(){ new Post("Azure's the best :D", now.AddHours(0.5))},
+            };
+
+            var mockMessageHandler = new Mock<HttpMessageHandler>();
+            mockMessageHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((HttpRequestMessage request, CancellationToken _) =>
+                {
+                    if (request.RequestUri?.PathAndQuery.Equals("/followers/mine") ?? false)
+                    {
+                        return new HttpResponseMessage
+                        {
+                            StatusCode = HttpStatusCode.OK,
+                            Content = new StringContent(JsonConvert.SerializeObject(followers))
+                        };
+                    }
+
+                    for (var i = 0; i < followers.Count; i++)
+                    {
+                        if (request.RequestUri?.PathAndQuery.Equals($"/{followers[i].Id}/posts") ?? false)
+                        {
+                            return new HttpResponseMessage
+                            {
+                                StatusCode = HttpStatusCode.OK,
+                                Content = new StringContent(JsonConvert.SerializeObject(posts[i]))
+                            };
+                        }
+                    }
+
+                    return new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.NotFound,
+                        Content = new StringContent("")
+                    };
+                });
+
+            var feed = await generator.GetFeed(new HttpClient(mockMessageHandler.Object) { BaseAddress = new Uri("http://localhost") });
+
+            posts[0][0].ShouldDeepEqual(feed[0]);
+            posts[1][0].ShouldDeepEqual(feed[2]);
+            posts[2][0].ShouldDeepEqual(feed[1]);
+        }
+
+
+        [Fact]
         public async Task GetFeed_EmptyList()
         {
             var mockMessageHandler = SetupMockHttpHandler(new List<Follower>(), new List<List<Post>>());

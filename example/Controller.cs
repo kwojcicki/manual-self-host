@@ -64,6 +64,7 @@ namespace httpclientestdouble.example
             return feed;
         }
     }
+
     public interface IPostsService
     {
         Task<List<Post>> GetUsersPosts(Guid id, int pageSize = -1, int page = -1);
@@ -121,11 +122,6 @@ namespace httpclientestdouble.example
         }
     }
 
-    public interface IFollowersService
-    {
-        Task<List<Follower>> GetMyFollowers();
-    }
-
     public interface IFollowerRepository
     {
         Task<List<Follower>> GetMyFollowers();
@@ -143,22 +139,6 @@ namespace httpclientestdouble.example
         public Task<List<Follower>> GetMyFollowers()
         {
             return Task.FromResult(followers);
-        }
-    }
-
-    public class FollowersService : IFollowersService
-    {
-
-        private readonly IFollowerRepository followersRepository;
-
-        public FollowersService(IFollowerRepository followersRepository)
-        {
-            this.followersRepository = followersRepository;
-        }
-
-        public Task<List<Follower>> GetMyFollowers()
-        {
-            return followersRepository.GetMyFollowers();
         }
     }
 
@@ -190,11 +170,11 @@ namespace httpclientestdouble.example
     [Authorize]
     public class FollowersController : ControllerBase
     {
-        private readonly IFollowersService followersService;
+        private readonly IFollowerRepository followerRepository;
 
-        public FollowersController(IFollowersService followersService)
+        public FollowersController(IFollowerRepository followerRepository)
         {
-            this.followersService = followersService;
+            this.followerRepository = followerRepository;
         }
 
         [HttpGet("/followers/mine")]
@@ -202,7 +182,7 @@ namespace httpclientestdouble.example
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<List<Follower>> GetMyFollowers()
         {
-            return await followersService.GetMyFollowers();
+            return await followerRepository.GetMyFollowers();
         }
     }
 }

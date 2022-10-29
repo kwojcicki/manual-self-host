@@ -16,11 +16,42 @@ namespace httpclientestdouble.example
             testDouble = new InMemoryHttpClient(new ObjectDeserializer());
         }
 
+        [Fact]
+        public async Task GetFeed_MultipleFollowers_Manual()
+        {
+            var followers = new List<Follower>() { new Follower(Guid.NewGuid()), new Follower(Guid.NewGuid()), new Follower(Guid.NewGuid()) };
+            var now = DateTimeOffset.UtcNow;
+            var posts = new List<List<Post>>() {
+                new List<Post>(){ new Post("I love AWS!", now.AddHours(1)) },
+                new List<Post>(){ new Post("GCP Rocks!", now) },
+                new List<Post>(){ new Post("Azure's the best :D", now.AddHours(0.5))},
+            };
+
+            var inmemoryFollowersRepository = new InMemoryFollowerRepository(followers);
+            var followerController = new FollowersController(inmemoryFollowersRepository);
+
+            var postsDict = new Dictionary<Guid, List<Post>>();
+            for (int i = 0; i < followers.Count; i++)
+            {
+                postsDict.Add(followers[i].Id, posts[i]);
+            }
+            var inmemoryPostRepository = new InMemoryPostsRepository(postsDict);
+            var postsService = new PostsService(inmemoryPostRepository);
+            var postsController = new PostsController(postsService);
+
+            var testDoubleMessageHandler = testDouble.GetHttpClient(new ControllerBase[] { followerController, postsController });
+
+            var feed = await generator.GetFeed(testDoubleMessageHandler);
+
+            posts[0][0].ShouldDeepEqual(feed[0]);
+            posts[1][0].ShouldDeepEqual(feed[2]);
+            posts[2][0].ShouldDeepEqual(feed[1]);
+        }
+
         private HttpClient SetupTestDouble(List<Follower> followers, List<List<Post>> posts)
         {
             var inmemoryFollowersRepository = new InMemoryFollowerRepository(followers);
-            var followerService = new FollowersService(inmemoryFollowersRepository);
-            var followerController = new FollowersController(followerService);
+            var followerController = new FollowersController(inmemoryFollowersRepository);
 
             var postsDict = new Dictionary<Guid, List<Post>>();
             for (int i = 0; i < followers.Count; i++)
